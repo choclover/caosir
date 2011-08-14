@@ -41,7 +41,7 @@ sub LOG_FILE {
   }
   if ($bAppData) {$fileName = " >> " . $fileName;  #append data
   } else         {$fileName = " > " . $fileName;}
-    
+
   open(tmpLogFile, $fileName) || die "Cannot open log file: $fileName!\n";
   foreach (@logPara) {print tmpLogFile "$_\n";}
   close(tmpLogFile);
@@ -51,12 +51,12 @@ sub download_webpage {
   my ($url, $savedFName) = @_;  D("In download_webpage() -- $savedFName\t$url");
   my $userAgent = new LWP::UserAgent;
   $userAgent->agent('Mozilla/5.0');
-  
+
   my $req = HTTP::Request->new('GET', $url);
   #my $req = new HTTP::Request ('POST',$address);
   $req->content_type('application/x-www-form-urlencoded');
   #$req->content();
-  
+
   my $res = $userAgent->request($req);
   LOG_FILE($savedFName, $FALSE, $res->as_string());
 }#download_webpage
@@ -72,7 +72,7 @@ sub download_bin {
 
 sub send_request {
   my ($url, $reqStr) = @_;  D("In send_request() -- $url\n$reqStr");
-  
+
   my $ua = LWP::UserAgent -> new();
   #$ua->agent('Mozilla/5.0');
   $ua->agent('Jakarta Commons-HttpClient/3.1');
@@ -119,26 +119,26 @@ sub main {
   my ($content, $articleId) = ("", "");
   my ($pageNo, $lastPageNo) = (1, 0);
   my ($url, $url_host, $savedFName) = ("", "http://www.caorenchao.com/", "Temp.htm");
-  
+
   $url = $url_host;  $pageNo = 1;
   do {
     download_webpage($url, $savedFName);
     open(hFileHandle, $savedFName) || die "Cannot open file $savedFName!";
     while (<hFileHandle>) {
       die "500 Internal Error: Fail to download $url!\n" if (/500.+Internal Server Error/);
-      
+
       if ($lastPageNo<1 && m!class=[\"\']pages[\"\']>!ig) {
         D($_);
         $lastPageNo = (m!class=[\"\']pages[\"\']>\d+/(\d+)!i) [0];
         P("Last Page is: $lastPageNo");    #exit 1;
       }
-      
+
       next if (not m/<div class="post" id="post-\d+"/i);
       $articleId = (m/<div class="post" id="post-(\d+)"/i) [0];  P("articleId is $articleId");
       my $savedArticle = "./Articles/$articleId.htm";
       #last if (-e $savedArticle);
       next if (-e $savedArticle);  #hemerr
-      
+
       $content = "";
       while (defined $_ && not m!/img/comments.gif!ig)  #break when reach the end of file
       {
@@ -146,7 +146,7 @@ sub main {
           my $imageUrl = (m!<img.+src="(http://\S+)"!ig) [0];   #D("imageUrl is: \t$imageUrl");
           my $imageFName = substr($imageUrl, rindex($imageUrl, '/')+1);  #D("imageFName is: \t$imageFName");
           my $imagePath = "";
-          
+
           if ($imageUrl=~m/wp-content/i || $imageFName=~m/author.gif/i || $imageFName=~m/timeicon.gif/i || $imageFName=~m/comments.gif/i) {
             #do not download the image
           } else {
@@ -167,32 +167,32 @@ sub main {
             $_ = <hFileHandle>;
           }
           $aLine .= $_;
-          
+
           D("aLine before is: $aLine");
-          $aLine =~ s!<script .*<\/script>!!isg;  
+          $aLine =~ s!<script .*<\/script>!!isg;
           D("aLine after is: $aLine");
           $_ = $aLine;
         }
-        
+
         $content .= $_;
         $_ = <hFileHandle>;   #$_="" if (!defined $_);
       }
       #P("break while $_") ;
-      #D("Content is: $content");  
-      
-      $content = sprintf("%s\n%s\n%s\n%s\n%s", 
+      #D("Content is: $content");
+
+      $content = sprintf("%s\n%s\n%s\n%s\n%s",
         '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">',
         '<html xmlns="http://www.w3.org/1999/xhtml">',
         '<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />',
         $content, "<p><p><p></html>");
-        
+
       unlink $savedArticle if (-e $savedArticle);
-      LOG_FILE($savedArticle, $FALSE, $content); 
+      LOG_FILE($savedArticle, $FALSE, $content);
     }
     close(hFileHandle);
-    
+
     $url = sprintf("%s/page/%d", $url_host, ++$pageNo);
-    
+
   } while ($pageNo <= $lastPageNo);
 }
 
